@@ -147,11 +147,14 @@ def weighted_skew(df_in, col, weights):
     n_out = df_in['sp'].sum() / df_in[weights].sum()
     return n_out
 
-def weighted_kurtosis(df_in, col, weights): #Gives the excess kurtosis
+def weighted_kurtosis(df_in, col, weights, excess = True): #Gives the excess kurtosis
     wa = weighted_average(df_in, col, weights)
     wv = weighted_variance(df_in, col, weights)
     df_in['sp'] = df_in[weights] * ((df_in[col] - wa) / (math.sqrt(wv))) ** 4
-    n_out = df_in['sp'].sum() / df_in[weights].sum() - 3
+    if excess:
+        n_out = df_in['sp'].sum() / df_in[weights].sum() - 3
+    else:
+        n_out = df_in['sp'].sum() / df_in[weights].sum()
     return n_out
 
 def recode_index(df,old_name,new_name): #Recodes index
@@ -280,12 +283,8 @@ transit_modes = ['Bus (public transit)',
 
 implied_transfer_time = 20 #Set number of minutes to assume person waiting for transfer
 
-print len(HHPerTrip.columns.tolist())
-print len(HHPerTrip.index.tolist())
-i = 0
-for trip in HHPerTrip.index.tolist():
-    i += 1
-    print i
+print ('Begin identification of access, egress, and transfer walk trips')
+for trip in HHPerTrip.index.tolist():  
     if HHPerTrip.loc[trip, 'mode'] == 'Walk, jog, or wheelchair': #Check if walk trip
         if trip + 1 in HHPerTrip.index.tolist(): #Check if next trip exists
             if HHPerTrip.loc[trip + 1, 'mode'] in transit_modes: #Check if next trip is transit
@@ -317,6 +316,7 @@ print('Access, egress, and transfer walk trips identified')
 HHPerTrip['Transfered'] = np.nan
 HHPerTrip['Transfered'] = HHPerTrip['Transfered'].fillna(0) #Creates column of zeros
 
+print('Begin identification of unlinked transit trips')
 tripids = HHPerTrip.query('mode in @transit_modes').index.tolist()
 tripids.reverse()
 for trip in tripids: #Loops over all transit trips
@@ -325,8 +325,10 @@ for trip in tripids: #Loops over all transit trips
             HHPerTrip.loc[trip + 1, 'Transfered'] = 1
             HHPerTrip.loc[trip, 'gdist'] = HHPerTrip.loc[trip, 'gdist'] + HHPerTrip.loc[trip + 1, 'gdist'] #Add distances together
             HHPerTrip.loc[trip, 'trip_dur_reported'] = HHPerTrip.loc[trip, 'trip_dur_reported'] + HHPerTrip.loc[trip + 1, 'trip_dur_reported'] #Add times together
+print('Unlinked transit trips identified')
 
 HHPerTrip = HHPerTrip.query('Transfered != 1 and walk_to_transit != 1 and walk_from_transit != 1')
+print('Access, egress, and transfer walk trips and unlinked transit trips removed')
 
 print('Data processed in ' + str(round(time.time() - filter_start, 1)) + ' seconds')
 

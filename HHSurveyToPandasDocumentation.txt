@@ -43,21 +43,36 @@ Example: remove_percent('4.5%') = 4.5
 get_mode_share(DataFrame, grouper = string, weighted = Boolean: True)
 Obtains the weighted or unweighted mode share grouped by a variable
 
-weighted_average(DataFrame, column = string, weights = string, grouper = string)
+get_mode_share_06(DataFrame, grouper = string, weighted = Boolean: True)
+Like get_mode_share, but for the 2006 survey data in h5 format
+
+weighted_average(DataFrame, column = string, weights = string, grouper = string)*
 Returns the weighted average of the specified column of a data frame. Grouping by another variable is optional
-(Set grouper = None if no grouping is to be done)
+(Set grouper = None (default) if no grouping is to be done)
 Returns a series if grouping is done and a floating point number if not
+
+weighted_variance(DataFrame, column = string, weights = string)*
+Returns the weighted variance of the specified column of a data frame.
+
+weighted_skew(DataFrame, column = string, weights = string)*
+Returns the weighted skewness of the specified column of a data frame.
+
+weighted_kurtosis(DataFrame, column = string, weights = string, excess = Boolean: True)*
+Returns the weighted kurtosis of the specified column of a data frame. If excess is set to true then the excess kurtosis will be computed.
+
+*weighted moment functions based on the formulas found at http://www.nematrian.com/R.aspx?p=WeightedMomentsAndCumulants
 
 recode_index(DataFrame, old_name = string, new_name = string)
 Recodes the name of the index
+
+min_to_hour(input, base):
+Converts minutes since base hour to hour of day
+Examples: min_to_hour(0, 3) = '03-04'; min_to_hour(390, 3) = '09-10'; min_to_hour(390, 0) = '06-07'; min_to_hour(720, 3) = '15-16'
 
 all_same(items)
 Checks if all of the items in a list or series are the same
 Examples: all_same([1, 1, 1]) = True; all_same([1, 2, 3]) = False
 
-min_to_hour(input, base):
-Converts minutes since base hour to hour of day
-Examples: min_to_hour(0, 3) = '03-04'; min_to_hour(390, 3) = '09-10'; min_to_hour(390, 0) = '06-07'; min_to_hour(720, 3) = '15-16'
 
 File-creating functions:
 
