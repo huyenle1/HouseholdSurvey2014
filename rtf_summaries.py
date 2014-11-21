@@ -33,9 +33,10 @@ def assign_ferry(df):
     print ('Ferry trips assigned a mode')
     return df
 
+output_location = '[OUTPUT LOCATION]'
 
-file = 'R:/JOE/summarize/survey.h5'
-guide = 'R:/JOE/summarize/CatVarDict.xlsx'
+file = '[SURVEY H5 FILE]'
+guide = '[GUIDE FILE]'
 name = 'ancient mystical past'
 
 mode_map = {'Drove alone': 'SOV',
@@ -95,7 +96,7 @@ purpose_map = {'Go home': 'None/Home',
 
 data_2006 = convert(file, guide, name)
 
-districtfile = 'R:/JOE/summarize/TAZ_TAD_County.csv'
+districtfile = '[TAZ_TAD_COUNTY.CSV]'
 zone_district = pd.DataFrame.from_csv(districtfile)
 
 
@@ -216,7 +217,7 @@ for weighting in mode_share.items:
     mode_share[weighting]['Change'] = mode_share[weighting]['Change'].round(2)
 
 
-mode_share.to_excel('R:/JOE/Survey Summaries/Mode_Share.xlsx')
+mode_share.to_excel(output_location + '/Mode_Share.xlsx')
 
 HHPerTrip = HHPerTrip.query('gdist != "."')
 HHPerTrip['gdist'] = HHPerTrip['gdist'].astype('float')
@@ -260,7 +261,7 @@ for grouping in trip_lengths:
 #dist_by_submode = weighted_average(HHPerTrip, 'gdist', 'expwt_final', 'mode')
 
 rgc_map = {}
-parcel_rgc = pd.DataFrame.from_csv('R:/JOE/summarize/Parcel-UrbCen.csv')
+parcel_rgc = pd.DataFrame.from_csv('[PARCEL FILE]')
 parcel_rgc = parcel_rgc.drop(0)
 for parcel in parcel_rgc.index.tolist():
     rgc_map.update({parcel: parcel_rgc.loc[parcel, 'NAME']})
@@ -296,7 +297,7 @@ for weighting in ['Weighted', 'Unweighted']:
         rgc_mode_share[weighting][item]['2014'] = rgc_mode_share[weighting][item]['2014'].round(2)
         rgc_mode_share[weighting][item]['Change'] = rgc_mode_share[weighting][item]['Change'].round(2)
 
-rgc_mode_share['Weighted'].to_excel('R:/JOE/Survey Summaries/Regional_Center_Mode_Share.xlsx')
+rgc_mode_share['Weighted'].to_excel(output_location + '/Regional_Center_Mode_Share.xlsx')
 
 HHPer_2006['rgc'] = HHPer_2006['hhparcel'].map(rgc_map)
 per_in_rgc_14 = HHPer[pd.isnull(HHPer['h_rgc_name']) == False]['expwt_final'].sum()
@@ -319,8 +320,8 @@ HHPerTrip_2006['d_district'] = HHPerTrip_2006['dtaz'].map(district_map)
 
 omap = {}
 dmap = {}
-odf = pd.io.excel.read_excel('R:/JOE/Survey Summaries/survey_2014_trip_origins.xlsx')
-ddf = pd.io.excel.read_excel('R:/JOE/Survey Summaries/survey_2014_trip_destinations.xlsx')
+odf = pd.io.excel.read_excel('[ORIGINS FILE]')
+ddf = pd.io.excel.read_excel('[DESTINATIONS FILE]')
 odf['District'] = odf['TAZ'].map(district_map)
 ddf['District'] = ddf['TAZ'].map(district_map)
 for trip in odf.index.tolist():
@@ -372,14 +373,14 @@ transit_lengths['2006'] = lengths_06
 transit_lengths['2014'] = lengths_14
 transit_lengths['Change'] = transit_lengths['2014'] - transit_lengths['2006']
 transit_lengths['% Change'] = transit_lengths['Change'] / transit_lengths['2006'] * 100
-transit_lengths.to_excel('R:/JOE/Survey Summaries/transit_lengths_by_district.xlsx')
+transit_lengths.to_excel(output_location + '/transit_lengths_by_district.xlsx')
 
 transit_trips = pd.Panel(items = ['2006', '2014', 'Change', '% Change'], major_axis = districts, minor_axis = districts)
 transit_trips['2006'] = dd06_transit
 transit_trips['2014'] = dd14_transit
 transit_trips['Change'] = transit_trips['2014'] - transit_trips['2006']
 transit_trips['% Change'] = transit_trips['Change'] / transit_trips['2006'] * 100
-transit_trips.to_excel('R:/JOE/Survey Summaries/transit_trips_by_district.xlsx')
+transit_trips.to_excel(output_location + '/transit_trips_by_district.xlsx')
 
 ugb06_transit = transit_06[['o_district', 'd_district', 'trexpfac']].groupby(['o_district', 'd_district']).count()
 ugb14_transit = transit_14[['o_district', 'd_district', 'expwt_final']].groupby(['o_district', 'd_district']).count()
@@ -394,7 +395,7 @@ transit_records['2006'] = udd06_transit
 transit_records['2014'] = udd14_transit
 transit_records['Change'] = transit_records['2014'] - transit_records['2006']
 transit_records['% Change'] = transit_records['Change'] / transit_records['2006'] * 100
-transit_records.to_excel('R:/JOE/Survey Summaries/transit_records_by_district.xlsx')
+transit_records.to_excel(output_location + '/transit_records_by_district.xlsx')
 
 #writer = pd.ExcelWriter('R:/JOE/Survey Summaries/HHPerTrip.xlsx', 'xlsxwriter')
 #HHPerTrip_2006.to_excel(writer, '2006')
