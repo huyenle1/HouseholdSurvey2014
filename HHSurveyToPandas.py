@@ -6,14 +6,17 @@ import imp
 import scipy.stats as stats
 import math
 
-location = '[INSERT FILE LOCATION HERE]'
-household_file = '[INSERT HOUSEHOLD FILEPATH HERE]'
-vehicle_file = '[INSERT VEHICLE FILEPATH HERE]'
-person_file = '[INSERT PERSON FILEPATH HERE]'
-trip_file = '[INSERT TRIP FILEPATH HERE]'
-work_distance_file = '[INSERT WORK DISTANCE FILEPATH HERE]'
-school_distance_file = '[INSERT SCHOOL DISTANCE FILEPATH HERE]'
-guide_file = '[INSERT GUIDE FILEPATH HERE]'
+# Set base path for survey spreadsheets
+base_path = r'J:\Projects\Surveys\HHTravel\Survey2014\Data'
+
+output_location = base_path + r'\Summary'
+household_file = base_path + r'\Household\1_PSRC2014_HH_2014-08-07_v3' + '.xslx'
+vehicle_file = base_path + r'\Household\2_PSRC2014_Vehicle_2014-08-07' + '.xslx'
+person_file = base_path + r'\Person\3_PSRC2014_Person_2014-08-07_v3' + '.xslx'
+trip_file = base_path + r'\Trip\4_PSRC2014_Trip_2014-08-07_v1-11' + '.xslx'
+work_distance_file = base_path + r'Data\tagging_work_school_dist_from_google\2014WorkDistances.csv'
+school_distance_file = base_path + r'Data\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
+guide_file = base_path + r'\Summary\DaySim_Categorical_Variable_Guide.xlsx'
 
 #Checks if matplotlib is installed
 try:
@@ -415,7 +418,7 @@ def school_issue(Trip, Person):
     dropoff_or_pickup = hh_with_school_issue.query('travelers_total > travelers_next and time_at_dest < 10 or travelers_total < travelers_next and time_at_dest < 10')
 
     #Write the file
-    writer = pd.ExcelWriter(location + '/SchoolIssue.xlsx', engine = 'xlsxwriter')
+    writer = pd.ExcelWriter(output_location + '/SchoolIssue.xlsx', engine = 'xlsxwriter')
     hh_with_school_issue.to_excel(excel_writer = writer, sheet_name = 'Non-Students going to school', na_rep = 'NA')
     dropoff_or_pickup.to_excel(excel_writer = writer, sheet_name = 'Pickup and Dropoff', na_rep = 'NA')
     workbook = writer.book
@@ -450,7 +453,7 @@ def timeshareplot():
         matplotlib.pyplot.ylabel('% of Trips', size = 18, family = 'Times New Roman')
         matplotlib.pyplot.show()
         trip_time_fig = trip_time_hist.get_figure()
-        trip_time_fig.savefig(location + '/Time_Share.png')
+        trip_time_fig.savefig(output_location + '/Time_Share.png')
     else:
         raise ImportError("So matplotlib isn't really installed on your computer. Unless you have the library fairy's phone number, you should just go ahead and install it before trying to run this function.")
 
@@ -458,7 +461,7 @@ def get_outliers(dist, time, speed):
     High_Dist = Trip.query('gdist > @Dist')
     Long_Time = Trip.query('trip_dur_reported > @Time')
     High_Speed = HHPerTrip.query('implied_speed_mph > @Speed')
-    writer = pd.ExcelWriter(location + '/Outliers.xlsx', engine = 'xlsxwriter')
+    writer = pd.ExcelWriter(output_location + '/Outliers.xlsx', engine = 'xlsxwriter')
     High_Dist.to_excel(excel_writer = writer, sheet_name = 'Travel Distance', na_rep = 'NA')
     Long_Time.to_excel(excel_writer = writer, sheet_name = 'Travel Time', na_rep = 'NA')
     High_Speed.to_excel(excel_writer = writer, sheet_name = 'Speed', na_rep = 'NA')
