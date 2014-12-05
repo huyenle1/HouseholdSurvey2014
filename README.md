@@ -5,7 +5,7 @@ These scripts import PSRC's 2014 household survey from spreadsheets to Python Pa
 
 Spreadsheet data should be saved in the same directory as the scripts. 
 
-"HHSurveyToPandas.py" is the primary script that loads data into memory. It's scripts are imported by the individual query scripts. These query scripts create pivot table summaries for a specific topic, e.g., residence types by income, age, and education. 
+"HHSurveyToPandas.py" is the primary script that loads data into memory. Its functions are imported by the individual query scripts. These query scripts create pivot table summaries for a specific topic, e.g., residence types by income, age, and education. 
 
 Raw survey data is separated into 4 separate files:
 
