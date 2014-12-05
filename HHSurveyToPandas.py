@@ -9,25 +9,33 @@ import math
 # Set base path for survey spreadsheets
 base_path = r'J:\Projects\Surveys\HHTravel\Survey2014\Data'
 
+# Using most recently updated files from base_bath
 output_location = base_path + r'\Summary'
-household_file = base_path + r'\Household\1_PSRC2014_HH_2014-08-07_v3' + '.xslx'
-vehicle_file = base_path + r'\Household\2_PSRC2014_Vehicle_2014-08-07' + '.xslx'
-person_file = base_path + r'\Person\3_PSRC2014_Person_2014-08-07_v3' + '.xslx'
-trip_file = base_path + r'\Trip\4_PSRC2014_Trip_2014-08-07_v1-11' + '.xslx'
-work_distance_file = base_path + r'Data\tagging_work_school_dist_from_google\2014WorkDistances.csv'
-school_distance_file = base_path + r'Data\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
+household_file = base_path + r'\Household\1_PSRC2014_HH_2014-08-07_v1.5' + '.xlsx'
+vehicle_file = base_path + r'\Household\2_PSRC2014_Vehicle_2014-08-07_v1.2' + '.xlsx'
+person_file = base_path + r'\Person\3_PSRC2014_Person_2014-08-07_v1.3' + '.xlsx'
+trip_file = base_path + r'\Trip\4_PSRC2014_Trip_2014-08-07_v2-1' + '.xlsx'
+work_distance_file = base_path + r'\tagging_work_school_dist_from_google\2014WorkDistances.csv'
+school_distance_file = base_path + r'\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
 guide_file = base_path + r'\Summary\DaySim_Categorical_Variable_Guide.xlsx'
 
-#Checks if matplotlib is installed
-try:
-    imp.find_module('matplotlib')
-    found = True
-except ImportError:
-    found = False
-if found:
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import FuncFormatter
-    import matplotlib
+# Worksheet names of raw data in survey Excel data
+household_sheetname = 'Data'
+vehicle_sheetname = 'Data'
+person_sheetname = 'Data1'
+trip_sheetname = 'Data'
+
+def check_matplotlib():
+    ''' Try to load matplotlib module '''
+    try:
+        imp.find_module('matplotlib')
+        found = True
+    except ImportError:
+        found = False
+    if found:
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import FuncFormatter
+        import matplotlib
 
 def round_add_percent(number): #Rounds a floating point number and adds a percent sign
     if type(number) == str or type(number) == None:
@@ -208,167 +216,6 @@ def to_percent(y, position): #Converts a number to a percent
         print('No matplotlib')
         return 100 * y
 
-                
-#Start Importing
-timerstart = time.time()
-
-#Import categorical variable recoding map
-mapimportstart = time.time()
-guide = h5toDF.get_guide(guide_file)
-cat_var_dict = h5toDF.guide_to_dict(guide)
-print('Categorical variable recoding map successfully imported in '+str(round(time.time()-mapimportstart,1))+u' seconds \u270d')
-
-#Import Household File
-filetimerstart = time.time()
-Household = pd.io.excel.read_excel(household_file)
-for column in Household.columns:
-    if column in cat_var_dict:
-        Household[column] = Household[column].map(cat_var_dict[column])
-print('House File successfully imported and recoded in '+str(round(time.time()-filetimerstart,1))+u' seconds \u2302')
-
-#Import Vehicle File
-filetimerstart = time.time()
-Vehicle = pd.io.excel.read_excel(vehicle_file)
-for column in Vehicle.columns:
-    if column in cat_var_dict:
-        Vehicle[column] = Vehicle[column].map(cat_var_dict[column])
-print('Vehicle File successfully imported and recoded in '+str(round(time.time()-filetimerstart,1))+u' seconds \u2708')
-
-#Import Person File
-filetimerstart = time.time()
-Person = pd.io.excel.read_excel(person_file)
-for column in Person.columns:
-    if column in cat_var_dict:
-        Person[column] = Person[column].map(cat_var_dict[column])
-print('Person File successfully imported and recoded in '+str(round(time.time()-filetimerstart,1))+u' seconds \u2603')
-
-#Import Trip File (Main Sheet)
-filetimerstart = time.time()
-Trip = pd.io.excel.read_excel(trip_file, sheetname = 'Data')
-for column in Trip.columns:
-    if column in cat_var_dict:
-        pass
-        Trip[column] = Trip[column].map(cat_var_dict[column])
-print('Trip File successfully imported and recoded in '+str(round(time.time()-filetimerstart,1))+u' seconds \u2638')
-
-#Done Importing
-print('2014 Household Travel Survey Import Successful in ' + str(round(time.time() - timerstart, 1)) + u' seconds \u263a')
-
-#Some basic summaries
-num_households = Household['expwt_final'].sum()
-num_households_unweighted = Household['hhid'].count()
-
-HHPer = pd.merge(Household, Person, on = 'hhid')
-num_people = HHPer['expwt_final'].sum()
-num_people_unweighted = Person['personid'].count()
-
-HHPerTrip = pd.merge(HHPer, Trip, left_on = ['hhid', 'personid'], right_on = ['hhid', 'personID'])
-num_trips = HHPerTrip['expwt_final'].sum()
-num_trips_unweighted = HHPerTrip['expwt_final'].count()
-
-#####################BEGIN FILTER##################################################################
-
-filter_start = time.time()
-print('Begin data processing')
-
-#Create blank columns to indicate if a trip is implied to be walking to or from transit
-HHPerTrip['walk_to_transit'] = np.nan
-HHPerTrip['walk_from_transit'] = np.nan
-
-HHPerTrip = HHPerTrip.set_index('tripID')
-
-transit_modes = ['Bus (public transit)',
-                 'Train (rail and monorail)',
-                 'Ferry or water taxi',
-                 'Streetcar',
-                 'Paratransit',
-                 'Private bus or shuttle']
-
-implied_transfer_time = 20 #Set number of minutes to assume person waiting for transfer
-
-print ('Begin identification of access, egress, and transfer walk trips')
-for trip in HHPerTrip.index.tolist():  
-    if HHPerTrip.loc[trip, 'mode'] == 'Walk, jog, or wheelchair': #Check if walk trip
-        if trip + 1 in HHPerTrip.index.tolist(): #Check if next trip exists
-            if HHPerTrip.loc[trip + 1, 'mode'] in transit_modes: #Check if next trip is transit
-                if HHPerTrip.loc[trip + 1, 'time_start_mam'] - HHPerTrip.loc[trip, 'time_end_mam'] < implied_transfer_time: #Check if next trip began within implied transfer time
-                    HHPerTrip.loc[trip, 'walk_to_transit'] = 1
-                    HHPerTrip.loc[trip + 1, 'walk_to_transit'] = 0
-                else:
-                    HHPerTrip.loc[trip, 'walk_to_transit'] = 0
-            else:
-                HHPerTrip.loc[trip, 'walk_to_transit'] = 0
-        else:
-            HHPerTrip.loc[trip, 'walk_to_transit'] = 0
-        if trip - 1 in HHPerTrip.index.tolist(): #Check if previous trip exists
-            if HHPerTrip.loc[trip - 1, 'mode'] in transit_modes: #Check if previous trip was transit
-                if HHPerTrip.loc[trip, 'time_start_mam'] == HHPerTrip.loc[trip - 1, 'time_end_mam']: #Check if current trip began at the same time that the previous trip ended
-                    HHPerTrip.loc[trip, 'walk_from_transit'] = 1 
-                    HHPerTrip.loc[trip - 1, 'walk_from_transit'] = 0
-                else:
-                    HHPerTrip.loc[trip, 'walk_from_transit'] = 0
-            else:
-                HHPerTrip.loc[trip, 'walk_from_transit'] = 0
-        else:
-            HHPerTrip.loc[trip, 'walk_from_transit'] = 0
-
-print('Access, egress, and transfer walk trips identified')
-
-
-#Loop to identify if multi-route transit trips should be same trip
-HHPerTrip['Transfered'] = np.nan
-HHPerTrip['Transfered'] = HHPerTrip['Transfered'].fillna(0) #Creates column of zeros
-
-print('Begin identification of unlinked transit trips')
-tripids = HHPerTrip.query('mode in @transit_modes').index.tolist()
-tripids.reverse()
-for trip in tripids: #Loops over all transit trips
-    if trip + 1 in tripids: #Checks if next trip is transit
-        if HHPerTrip.loc[trip + 1, 'time_start_mam'] - HHPerTrip.loc[trip, 'time_end_mam'] <= implied_transfer_time: #Checks if next trip began within the implied transfer time
-            HHPerTrip.loc[trip + 1, 'Transfered'] = 1
-            HHPerTrip.loc[trip, 'gdist'] = HHPerTrip.loc[trip, 'gdist'] + HHPerTrip.loc[trip + 1, 'gdist'] #Add distances together
-            HHPerTrip.loc[trip, 'trip_dur_reported'] = HHPerTrip.loc[trip, 'trip_dur_reported'] + HHPerTrip.loc[trip + 1, 'trip_dur_reported'] #Add times together
-print('Unlinked transit trips identified')
-
-HHPerTrip = HHPerTrip.query('Transfered != 1 and walk_to_transit != 1 and walk_from_transit != 1')
-print('Access, egress, and transfer walk trips and unlinked transit trips removed')
-
-print('Data processed in ' + str(round(time.time() - filter_start, 1)) + ' seconds')
-
-#########################END FILTER##########################################################
-
-#Various basic data
-trip_ok = HHPerTrip.query('gdist > 0 and gdist < 200')
-average_trip_length = weighted_average(trip_ok, 'gdist', 'expwt_final', None)
-average_trip_length_unweighted = trip_ok['gdist'].mean()
-
-mode_share = HHPerTrip.groupby('mode').sum()['expwt_final']/num_trips*100
-mode_share_unweighted = HHPerTrip.groupby('mode').count()['expwt_final']/num_trips_unweighted*100
-mode_share_df = pd.DataFrame.from_items([('Weighted', mode_share.round(2)), ('Unweighted', mode_share_unweighted.round(2))])
-
-purpose_share = HHPerTrip.groupby('d_purpose').sum()['expwt_final']/num_trips*100
-purpose_share_unweighted = HHPerTrip.groupby('d_purpose').count()['expwt_final']/num_trips_unweighted*100
-purpose_share_df = pd.DataFrame.from_items([('Weighted', purpose_share.round(2)), ('Unweighted', purpose_share_unweighted.round(2))])
-purpose_share_df = recode_index(purpose_share_df, 'd_purpose', 'Destination Purpose')
-
-non_home_trips = HHPerTrip.query('d_purpose != "Go home"')
-num_non_home_trips = non_home_trips['expwt_final'].sum()
-num_non_home_trips_unweighted = non_home_trips['expwt_final'].count()
-
-trips_to_work = HHPerTrip.query('d_purpose == "Go to workplace" or d_purpose == "Go to other work-related place"')
-num_work_trips = trips_to_work['expwt_final'].sum()
-num_work_trips_unweighted = trips_to_work['expwt_final'].count()
-work_trip_mode_share = trips_to_work.groupby('mode').sum()['expwt_final']/num_work_trips*100
-work_trip_mode_share_unweighted = trips_to_work.groupby('mode').count()['expwt_final']/num_work_trips_unweighted*100
-work_trip_mode_share_df = pd.DataFrame.from_items([('Weighted', work_trip_mode_share.round(2)), ('Unweighted', work_trip_mode_share_unweighted.round(2))])
-
-trips_to_work = HHPerTrip.query('d_purpose == "Go to workplace" or d_purpose == "Go to other work-related place"')
-num_work_trips = trips_to_work['expwt_final'].sum()
-num_work_trips_unweighted = trips_to_work['expwt_final'].count()
-work_trip_mode_share = trips_to_work.groupby('mode').sum()['expwt_final']/num_work_trips*100
-work_trip_mode_share_unweighted = trips_to_work.groupby('mode').count()['expwt_final']/num_work_trips_unweighted*100
-work_trip_mode_share_df = pd.DataFrame.from_items([('Weighted', work_trip_mode_share.round(2)), ('Unweighted', work_trip_mode_share_unweighted.round(2))])
-
 def school_issue(Trip, Person):
     #Checking for school issue
     Trip['travelers_next'] = np.nan
@@ -486,10 +333,152 @@ def Movers(HHPer, HHPerTrip):
     loc_change_percentage = str(round((HHPer['loc_change'].fillna(0).multiply(HHPer['expwt_final']).sum() / HHPer['expwt_final'].sum()) * 100, 2)) + '%'
     print(loc_change_percentage)
 
-work_distances = pd.DataFrame.from_csv(work_distance_file)
-work_distances_in_50 = work_distances.query('miles < 50')
+def variable_guide(guide_file):
+    ''' loads a categorical variable dictionary as a dataframe. '''
+    guide = h5toDF.get_guide(guide_file)
+    return h5toDF.guide_to_dict(guide)
 
-school_distances = pd.DataFrame.from_csv(school_distance_file)
-school_distances_in_50 = work_distances.query('miles < 50')
+def load_survey_sheet(file_loc, sheetname):
+    ''' load excel worksheet into dataframe, specified by sheetname '''
+    return pd.io.excel.read_excel(file_loc, sheetname=sheetname)
 
-print('Data imported and ready to analyze!')
+def main():
+    household = load_survey_sheet(household_file, household_sheetname)
+    vehicle = load_survey_sheet(vehicle_file, vehicle_sheetname)
+    person = load_survey_sheet(person_file, person_sheetname)
+    trip = load_survey_sheet(trip_file, trip_sheetname)
+
+    # Some basic summaries
+    num_households = household['expwt_final'].sum()
+    num_households_unweighted = household['hhid'].count()
+
+    hh_per = pd.merge(person, household, on = 'hhid')
+    total_pop = hh_per['expwt_final_y'].sum()
+    total_survey_persons = person['personid'].count()
+
+if __name__ == '__main__':
+    main()
+
+# To add Daysim category titles, add this to load_survey_sheet
+#for column in survey_data.columns:
+#        if column in cat_var_dict:
+#            survey_data[column] = survey_data[column].map(cat_var_dict[column])
+
+#cat_var_dict = variable_guide(guide_file)
+
+#
+
+#HHPerTrip = pd.merge(HHPer, Trip, left_on = ['hhid', 'personid'], right_on = ['hhid', 'personID'])
+#num_trips = HHPerTrip['expwt_final'].sum()
+#num_trips_unweighted = HHPerTrip['expwt_final'].count()
+
+######################BEGIN FILTER##################################################################
+
+#filter_start = time.time()
+#print('Begin data processing')
+
+##Create blank columns to indicate if a trip is implied to be walking to or from transit
+#HHPerTrip['walk_to_transit'] = np.nan
+#HHPerTrip['walk_from_transit'] = np.nan
+
+#HHPerTrip = HHPerTrip.set_index('tripID')
+
+#transit_modes = ['Bus (public transit)',
+#                 'Train (rail and monorail)',
+#                 'Ferry or water taxi',
+#                 'Streetcar',
+#                 'Paratransit',
+#                 'Private bus or shuttle']
+
+#implied_transfer_time = 20 #Set number of minutes to assume person waiting for transfer
+
+#print ('Begin identification of access, egress, and transfer walk trips')
+#for trip in HHPerTrip.index.tolist():  
+#    if HHPerTrip.loc[trip, 'mode'] == 'Walk, jog, or wheelchair': #Check if walk trip
+#        if trip + 1 in HHPerTrip.index.tolist(): #Check if next trip exists
+#            if HHPerTrip.loc[trip + 1, 'mode'] in transit_modes: #Check if next trip is transit
+#                if HHPerTrip.loc[trip + 1, 'time_start_mam'] - HHPerTrip.loc[trip, 'time_end_mam'] < implied_transfer_time: #Check if next trip began within implied transfer time
+#                    HHPerTrip.loc[trip, 'walk_to_transit'] = 1
+#                    HHPerTrip.loc[trip + 1, 'walk_to_transit'] = 0
+#                else:
+#                    HHPerTrip.loc[trip, 'walk_to_transit'] = 0
+#            else:
+#                HHPerTrip.loc[trip, 'walk_to_transit'] = 0
+#        else:
+#            HHPerTrip.loc[trip, 'walk_to_transit'] = 0
+#        if trip - 1 in HHPerTrip.index.tolist(): #Check if previous trip exists
+#            if HHPerTrip.loc[trip - 1, 'mode'] in transit_modes: #Check if previous trip was transit
+#                if HHPerTrip.loc[trip, 'time_start_mam'] == HHPerTrip.loc[trip - 1, 'time_end_mam']: #Check if current trip began at the same time that the previous trip ended
+#                    HHPerTrip.loc[trip, 'walk_from_transit'] = 1 
+#                    HHPerTrip.loc[trip - 1, 'walk_from_transit'] = 0
+#                else:
+#                    HHPerTrip.loc[trip, 'walk_from_transit'] = 0
+#            else:
+#                HHPerTrip.loc[trip, 'walk_from_transit'] = 0
+#        else:
+#            HHPerTrip.loc[trip, 'walk_from_transit'] = 0
+
+#print('Access, egress, and transfer walk trips identified')
+
+
+##Loop to identify if multi-route transit trips should be same trip
+#HHPerTrip['Transfered'] = np.nan
+#HHPerTrip['Transfered'] = HHPerTrip['Transfered'].fillna(0) #Creates column of zeros
+
+#print('Begin identification of unlinked transit trips')
+#tripids = HHPerTrip.query('mode in @transit_modes').index.tolist()
+#tripids.reverse()
+#for trip in tripids: #Loops over all transit trips
+#    if trip + 1 in tripids: #Checks if next trip is transit
+#        if HHPerTrip.loc[trip + 1, 'time_start_mam'] - HHPerTrip.loc[trip, 'time_end_mam'] <= implied_transfer_time: #Checks if next trip began within the implied transfer time
+#            HHPerTrip.loc[trip + 1, 'Transfered'] = 1
+#            HHPerTrip.loc[trip, 'gdist'] = HHPerTrip.loc[trip, 'gdist'] + HHPerTrip.loc[trip + 1, 'gdist'] #Add distances together
+#            HHPerTrip.loc[trip, 'trip_dur_reported'] = HHPerTrip.loc[trip, 'trip_dur_reported'] + HHPerTrip.loc[trip + 1, 'trip_dur_reported'] #Add times together
+#print('Unlinked transit trips identified')
+
+#HHPerTrip = HHPerTrip.query('Transfered != 1 and walk_to_transit != 1 and walk_from_transit != 1')
+#print('Access, egress, and transfer walk trips and unlinked transit trips removed')
+
+#print('Data processed in ' + str(round(time.time() - filter_start, 1)) + ' seconds')
+
+##########################END FILTER##########################################################
+
+##Various basic data
+#trip_ok = HHPerTrip.query('gdist > 0 and gdist < 200')
+#average_trip_length = weighted_average(trip_ok, 'gdist', 'expwt_final', None)
+#average_trip_length_unweighted = trip_ok['gdist'].mean()
+
+#mode_share = HHPerTrip.groupby('mode').sum()['expwt_final']/num_trips*100
+#mode_share_unweighted = HHPerTrip.groupby('mode').count()['expwt_final']/num_trips_unweighted*100
+#mode_share_df = pd.DataFrame.from_items([('Weighted', mode_share.round(2)), ('Unweighted', mode_share_unweighted.round(2))])
+
+#purpose_share = HHPerTrip.groupby('d_purpose').sum()['expwt_final']/num_trips*100
+#purpose_share_unweighted = HHPerTrip.groupby('d_purpose').count()['expwt_final']/num_trips_unweighted*100
+#purpose_share_df = pd.DataFrame.from_items([('Weighted', purpose_share.round(2)), ('Unweighted', purpose_share_unweighted.round(2))])
+#purpose_share_df = recode_index(purpose_share_df, 'd_purpose', 'Destination Purpose')
+
+#non_home_trips = HHPerTrip.query('d_purpose != "Go home"')
+#num_non_home_trips = non_home_trips['expwt_final'].sum()
+#num_non_home_trips_unweighted = non_home_trips['expwt_final'].count()
+
+#trips_to_work = HHPerTrip.query('d_purpose == "Go to workplace" or d_purpose == "Go to other work-related place"')
+#num_work_trips = trips_to_work['expwt_final'].sum()
+#num_work_trips_unweighted = trips_to_work['expwt_final'].count()
+#work_trip_mode_share = trips_to_work.groupby('mode').sum()['expwt_final']/num_work_trips*100
+#work_trip_mode_share_unweighted = trips_to_work.groupby('mode').count()['expwt_final']/num_work_trips_unweighted*100
+#work_trip_mode_share_df = pd.DataFrame.from_items([('Weighted', work_trip_mode_share.round(2)), ('Unweighted', work_trip_mode_share_unweighted.round(2))])
+
+#trips_to_work = HHPerTrip.query('d_purpose == "Go to workplace" or d_purpose == "Go to other work-related place"')
+#num_work_trips = trips_to_work['expwt_final'].sum()
+#num_work_trips_unweighted = trips_to_work['expwt_final'].count()
+#work_trip_mode_share = trips_to_work.groupby('mode').sum()['expwt_final']/num_work_trips*100
+#work_trip_mode_share_unweighted = trips_to_work.groupby('mode').count()['expwt_final']/num_work_trips_unweighted*100
+#work_trip_mode_share_df = pd.DataFrame.from_items([('Weighted', work_trip_mode_share.round(2)), ('Unweighted', work_trip_mode_share_unweighted.round(2))])
+
+#work_distances = pd.DataFrame.from_csv(work_distance_file)
+#work_distances_in_50 = work_distances.query('miles < 50')
+
+#school_distances = pd.DataFrame.from_csv(school_distance_file)
+#school_distances_in_50 = work_distances.query('miles < 50')
+
+#print('Data imported and ready to analyze!')
