@@ -63,3 +63,18 @@ benefits_commute_age = pd.pivot_table(person_hh, values='expwt_final_per', index
                                     columns='age', aggfunc=np.sum)
 benefits_commute_inc = pd.pivot_table(person_hh, values='expwt_final_per', index='benefits_commute', 
                                     columns='hh_income_detailed', aggfunc=np.sum)
+
+def end_sound():
+    ws.Beep(932, 250)
+    sleep(0.25)
+    ws.Beep(698, 166)
+    ws.Beep(659, 166)
+    ws.Beep(698, 167)
+    ws.Beep(784, 500)
+    ws.Beep(698, 500)
+    sleep(0.5)
+    ws.Beep(880, 250)
+    sleep(0.25)
+    ws.Beep(932, 250)
+    sleep(0.25)
+    ws.Beep(233, 500)

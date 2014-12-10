@@ -7,17 +7,16 @@ import scipy.stats as stats
 import math
 
 # Set base path for survey spreadsheets
-base_path = r'J:\Projects\Surveys\HHTravel\Survey2014\Data'
+base_path = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Export\Release 1\General Release\Unzipped'
 
 # Using most recently updated files from base_bath
-output_location = base_path + r'\Summary'
-household_file = base_path + r'\Household\1_PSRC2014_HH_2014-08-07_v1.5' + '.xlsx'
-vehicle_file = base_path + r'\Household\2_PSRC2014_Vehicle_2014-08-07_v1.2' + '.xlsx'
-person_file = base_path + r'\Person\3_PSRC2014_Person_2014-08-07_v1.3' + '.xlsx'
-trip_file = base_path + r'\Trip\4_PSRC2014_Trip_2014-08-07_v2-1' + '.xlsx'
-work_distance_file = base_path + r'\tagging_work_school_dist_from_google\2014WorkDistances.csv'
-school_distance_file = base_path + r'\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
-guide_file = base_path + r'\Summary\DaySim_Categorical_Variable_Guide.xlsx'
+household_file = base_path + r'\2014-pr1-hhsurvey-households' + '.xlsx'
+vehicle_file = base_path + r'\2014-pr1-hhsurvey-vehicles' + '.xlsx'
+person_file = base_path + r'\2014-pr1-hhsurvey-persons' + '.xlsx'
+trip_file = base_path + r'\2014-pr1-hhsurvey-trips' + '.xlsx'
+work_distance_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\tagging_work_school_dist_from_google\2014WorkDistances.csv'
+school_distance_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
+guide_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Summary\DaySim_Categorical_Variable_Guide.xlsx'
 
 # Worksheet names of raw data in survey Excel data
 household_sheetname = 'Data'
