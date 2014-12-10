@@ -5,38 +5,18 @@ These scripts import PSRC's 2014 household survey from spreadsheets to Python Pa
 
 Spreadsheet data should be saved in the same directory as the scripts. 
 
-"HHSurveyToPandas.py" is the primary script that loads data into memory. It compiles the following data.
+"HHSurveyToPandas.py" is the primary script that loads data into memory. Its functions are imported by the individual query scripts. These query scripts create pivot table summaries for a specific topic, e.g., residence types by income, age, and education. 
 
+Raw survey data is separated into 4 separate files:
 
-Variables:
+Household
+Vehicle
+Person
+Trip
 
-Household:		 Household file (DataFrame)
-Vehicle:		 Vehicle file (DataFrame)
-Person:			 Person file (DataFrame)
-Trip:			 Trip file (DataFrame)
+These files are imported into Python and further merged and joined for more complicated data queries. Two important joined files are the Person-Household and the Person-Household-Trip files. The Person-Household file joins household-level data to each person record, using the person ID as a common parameter. This data allows segmentation across certain variables available in only person- or household-level detail. The Person-Household-Trip file joins the Person-Household data with each trip record, allowing further analysis and segmentation.
 
-HHPer:			 Merge of household and person files (DataFrame)
-HHPerTrip:		 Merge of household, person, and trip files (DataFrame)
-num_households: 	 Number of Households (float)
-num_people: 		 Number of People (float)
-num_trips:		 Number of Trips (float)
-trip_ok:		 Subset of HHPerTrip where the trip length is between 0 and 200 miles (DataFrame)
-average_trip_length:	 Average trip length of trips in trip_ok (float)
-
-mode_share:		 Mode share for all trips (Series)
-mode_share_df:		 Data frame with weighted and unweighted mode share (DataFrame)
-purpose_share:		 Purpose share for all trips (Series)
-purpose_share_df:	 Data frame with weighted and unweighted purpose share (DataFrame)
-non_home_trips:		 Subset of HHPerTrip where the destination purpose is not going home (DataFrame)
-num_non_home_trips:	 The number of non-home trips (float)
-
-trips_to_work:		 Subset of HHPerTrip where the destination purpose is to go to work (DataFrame)
-num_work_trips:		 Number of work trips (float)
-work_trip_mode_share:	 Mode share for trips to work (Series)
-work_trip_mode_share_df: Data frame with weighted and unweighted work trip mode share (DataFrame)
-
-For all float and series variables, the associated unweighted variable can be called by adding "_unweighted" to the variable name
-
+There are some built-in functions in "HHSurveyToPandas.py" that can be imported into each query script as needed.
 
 Functions:
 
