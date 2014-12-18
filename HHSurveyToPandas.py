@@ -14,6 +14,13 @@ household_file = base_path + r'\2014-pr1-hhsurvey-households' + '.xlsx'
 vehicle_file = base_path + r'\2014-pr1-hhsurvey-vehicles' + '.xlsx'
 person_file = base_path + r'\2014-pr1-hhsurvey-persons' + '.xlsx'
 trip_file = base_path + r'\2014-pr1-hhsurvey-trips' + '.xlsx'
+
+## Load person file with workplace data by county and TAZ (joined with ArcGIS)
+#person_work_county = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Maps\Release 1\PersonCountyTAZ.xlsx'
+## Load person file with workplace data by regional growth center (RGC) (only has person records for jobs within RGC)
+#person_work_rgc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Maps\Release 1\PersonRGC.xlsx'
+
+# Some stuff Joe used, not sure if we need to keep this...
 work_distance_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\tagging_work_school_dist_from_google\2014WorkDistances.csv'
 school_distance_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\tagging_work_school_dist_from_google\2014SchoolDistances.csv'
 guide_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Summary\DaySim_Categorical_Variable_Guide.xlsx'
@@ -23,6 +30,8 @@ household_sheetname = 'Data'
 vehicle_sheetname = 'Data'
 person_sheetname = 'Data1'
 trip_sheetname = 'Data'
+person_work_county_sheetname = 'PersonCountyTAZ'
+person_work_rgc_sheetname = 'PersonRGC'
 
 def check_matplotlib():
     ''' Try to load matplotlib module '''
