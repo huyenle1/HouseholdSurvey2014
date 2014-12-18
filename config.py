@@ -40,6 +40,7 @@ p_smartphone = "smartphone"             # Age 16+: Has smartphone
 p_license = "license"                   # Age 16+: Has valid drivers license
 p_numtrips = "numtrips"                 # Number of trips made on travel day (derived)
 p_hours_work = "hours_work"             # Work: Hours per week
+p_exp_wt = "expwt_final"                # Person expansion weight
 
 
 # # Set full path to survey spreadsheet data
