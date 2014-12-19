@@ -29,7 +29,9 @@ class Person:
             # Replace blank cells with NaN
             df.replace(' ', np.nan, inplace=True)
 
-    # Pivot tables: specify row segmentation
+    def pivot_table(self, rows, columns):
+        return pd.pivot_table(self.db, values=config.p_exp_wt, 
+                              rows=rows, columns=columns, aggfunc=np.sum)
 
     # Commute Factors
     def wbt_transitsafety(self, segmentation):
@@ -78,6 +80,8 @@ class Person:
         Not applicable  I already regularly walk, bike, and/or take transit '''
         return pd.pivot_table(self.df, values=config.p_exp_wt, rows=segmentation, 
                                     columns='wbt_na', aggfunc=np.sum)
+
+
 
 class Household:
     def __init__(self, df):
