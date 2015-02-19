@@ -5,7 +5,6 @@ import numpy as np
 import config
 import process_survey as ps
 import os
-from bs4 import BeautifulSoup
 
 # Load latest data
 
@@ -14,6 +13,7 @@ household = ps.load_data(config.household_file)
 person = ps.load_data(config.person_file)
 trip = ps.load_data(config.trip_file)
 veh = ps.load_data(config.vehicle_file)
+worker = ps.load_data(config.worker_file)    # Data on workplace location for employed survey respondents only
 
 
 def json_to_dictionary(dict_name, sheet):
@@ -106,6 +106,7 @@ person_labels = build_label_list(person)
 hh_labels = build_label_list(household)
 trip_labels = build_label_list(trip)
 veh_labels = build_label_list(veh)
+worker_labels = build_label_list(worker)
 
 label(household, hh_labels)
 label(person, person_labels)
@@ -119,5 +120,3 @@ person.to_excel(writer, "Person", engine='openpyxl')
 trip.to_excel(writer, "Trip", engine='openpyxl')
 veh.to_excel(writer, "Vehicle")
 writer.save()
-
-person.to_csv(path=r'labeled\person.csv')

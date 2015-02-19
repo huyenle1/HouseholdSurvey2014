@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import HHSurveyToPandas as survey_df    # Load survey data
+import process_survey as ps
 
 # Load the survey data per HHSurveyToPandas.py
 household = survey_df.load_survey_sheet(survey_df.household_file, survey_df.household_sheetname)

@@ -16,7 +16,7 @@ def join_hhper2trip(trip_df, hh_per_df):
     ''' Join person and household fields to trip records '''
     return pd.merge(trip_df, hh_per_df, 
                     left_on=config.t_personid, right_on=config.p_personid, 
-                    suffixes=('_trip', '_p_hh'))
+                    suffixes=('_trip', ''))
 
 class Person:
     def __init__(self, df, nan_replace=True):
@@ -30,7 +30,7 @@ class Person:
             df.replace(' ', np.nan, inplace=True)
 
     def pivot_table(self, rows, columns):
-        return pd.pivot_table(self.db, values=config.p_exp_wt, 
+        return pd.pivot_table(self.df, values=config.p_exp_wt, 
                               rows=rows, columns=columns, aggfunc=np.sum)
 
     # Commute Factors
@@ -95,7 +95,13 @@ class Household:
 
 class Trip:
     def __init__(self, df):
+        self.df = df
         self.tripdur = df['trip_dur_reported']
+
+    def pivot_table(self, rows, columns):
+        return pd.pivot_table(self.df, values=config.p_exp_wt, 
+                              rows=rows, columns=columns, aggfunc=np.sum)
+
 
 
 def clip(file):

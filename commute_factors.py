@@ -154,3 +154,15 @@ wbt_na_rgc_both = pd.pivot_table(work_home_both_rgc, values='expwt_fi_1', rows='
                                     columns='wbt_na_trip', aggfunc=np.sum)
 wbt_na_rgc_both_nonrgc = pd.pivot_table(work_home_both_nonrgc, values='expwt_fi_1', rows='NAME',    # RGC name
                                     columns='wbt_na_trip', aggfunc=np.sum)
+
+# Work benefit: Free or subsidized transit use
+benefits_transit_rgc = pd.pivot_table(person_hh, values='expwt_final_per', rows='h_rgc_name', 
+                                    columns='benefits_transit', aggfunc=np.sum)
+benefits_transit_work = pd.pivot_table(person_work_loc, values='expwt_fi_1', rows='NAME',    # RGC name
+                                    columns='benefits_t', aggfunc=np.sum)
+benefits_transit_same = pd.pivot_table(work_home_same_rgc, values='expwt_fi_1', rows='NAME',    # RGC name
+                                    columns='benefits_transit', aggfunc=np.sum)
+benefits_transit_both = pd.pivot_table(work_home_both_rgc, values='expwt_fi_1', rows='NAME',    # RGC name
+                                    columns='benefits_transit', aggfunc=np.sum)
+benefits_transit_rgc_both_nonrgc = pd.pivot_table(work_home_both_nonrgc, values='expwt_fi_1', rows='NAME',    # RGC name
+                                    columns='benefits_transit', aggfunc=np.sum)

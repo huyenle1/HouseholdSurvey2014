@@ -8,6 +8,7 @@ household_file = [r'\2014-pr1-hhsurvey-households', 'Data']
 vehicle_file = [r'\2014-pr1-hhsurvey-vehicles', 'Data']
 person_file = [r'\2014-pr1-hhsurvey-persons', 'Data1']
 trip_file = [r'\2014-pr1-hhsurvey-trips', 'Data']
+worker_file = [r'D:\Survey\HouseholdSurvey2014\Joined Data\Release 1\Workers.xlsx', 'Sheet1']
 
 # Column names (might change for next survey, so keeping this flexible) 
 # - Using "p" for person file, "h" for household file", "t" for trip file, and "v" for vehicle file
