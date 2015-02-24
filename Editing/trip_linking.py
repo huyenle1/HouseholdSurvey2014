@@ -17,6 +17,12 @@ uniquePersonIDs = trip.groupby('personID').count().index
 
 # Max size of trip sets
 trip_set_max = 4
+bad_trips = 'bad_trips.txt' # List of linked trips manually identified as [problems
+
+def unique_ordered_list(seq):
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if not (x in seen or seen_add(x))]
 
 # Make sure the trip file is sorted by Trip ID first!
 trip.sort('tripID', inplace=True)
@@ -40,7 +46,8 @@ for person in uniquePersonIDs:
             # Also ignore purpose of mode transfer.
             # Also ignore bus-bus trips
             if (    (person_trip['mode'] <> next_pers_trip['mode']          # Include mode changes
-                or  (person_trip['mode'] == next_pers_trip['mode'] == 8))   # Include bus-to-bus transfer
+                or  (person_trip['mode'] == next_pers_trip['mode'] == 8)    # Include bus-to-bus transfer
+                or  (person_trip['mode'] == next_pers_trip['mode'] == 9))   # Include train-to-train transfer
                 and person_trip['a_dur'] <= 15                                             
                 and (   person_trip['d_purpose'] == next_pers_trip['d_purpose']     # Trip purp must be the same
                      or person_trip['d_purpose'] == 15)                     # or purp listed as "mode change"
@@ -53,8 +60,10 @@ for person in uniquePersonIDs:
 
                 # Is this trip part of an existing linked trip pair or a new trip pair?
                 # Is the activity duration longer 30 minutes? Then it's probably a separate commute trip
-                if next_pers_trip['a_dur'] > 30:
-                    flag += 1
+                # I moved this to the outer loop - originally it was inside the above if statement...
+                # The linked ID is no longer sequential but it is at least unique
+            if next_pers_trip['a_dur'] > 30 or next_pers_trip['place_end'] == 'HOME' or next_pers_trip['place_end'] == 'WORK':
+                flag += 1
 
     person_counter += 1
 
@@ -83,6 +92,8 @@ for idx in list(unlinked_sets.index):
 
 # Find distribution of set sizes
 df_setsize = pd.DataFrame([setsize.keys(), setsize.values()]).T
+df_setsize.index = df_setsize[0]    # Set index equal to the set ID
+
 setsize_dist = df_setsize.groupby(1).count()   # Distribution of set size
 
 # Distribution shows that most (90%) of sets are 2 or 3 trips only. Let's automatically join these only and do the others manually. 
@@ -98,11 +109,24 @@ unlinked_trips_df['mode'] = pd.DataFrame(unlinked_trips_df['mode'].astype("str")
 # Create new column with concatentation of modes
 unlinked_trips_df['combined_modes'] = unlinked_trips_df.groupby('linked_flag').apply(lambda x: '-'.join(x['mode']))
 
+# We could also concatenate other fields in this way...
+#unlinked_trips_df['driver'] = unlinked_trips_df['driver'].astype("int64")   # Convert from float to int first
+#unlinked_trips_df['driver'] = pd.DataFrame(unlinked_trips_df['driver'].astype("str"))     # Convert to string
+#unlinked_trips_df['linked_driver'] = unlinked_trips_df.groupby('linked_flag').apply(lambda x: '-'.join(x['driver']))
+
 # Filter out sets with more than 4 unlinked trip and flag them for manual inspection
 # The name "..._max4" is poorly titled. The max set size is now flexible so that greater or fewer 
 unlinked_trips_max4 = unlinked_trips_df[unlinked_trips_df['combined_modes'].str.count('-') < trip_set_max]
 
+# Want the sum of all trips in a set for these values
 sum_fields = ['gdist', 'gtime', 'trip_dur_reported']
+
+# Want the max of all trips in a set for these values (to capture any instance of use)
+# This captures any instance of use in the trip set and assumes only 1 instance per set.
+# This is sort of okay since we only link 4 trips and it's unlinkely many of these fields will have multiple
+# instances, but it should be more methodical in the future. 
+max_fields = ['taxi_type', 'taxi_fare', 'vehicle', 'driver', 'toll', 'pool_start', 'pr_lot1_a', 'pr_lot1',
+              'change_vehicles', 'park', 'pr_lot2_a', 'pr_lot2', 'park_pay', 'mode_acc', 'mode_egr']
 
 # Convert to consistent type - float 64
 for field in sum_fields:
@@ -112,8 +136,9 @@ for field in sum_fields:
 for field in ['transitline' + str(x) for x in xrange(1,5)]:
     unlinked_trips_max4[field] = unlinked_trips_max4[field].astype("int")
 
-# Get the sums of trips grouped by each person's set
+# Get the sums and max values of trips grouped by each person's set
 sums = unlinked_trips_max4.groupby('linked_flag').sum()
+maxes = unlinked_trips_max4.groupby('linked_flag').max()
 
 # Now we want to squish those unlinked trips together!
 # The "primary trip" will inherit characeristics of associated trips
@@ -134,22 +159,31 @@ primary_trips_df.index = primary_trips_df.linked_flag   # Reset index to trip se
 # Change primary trip start time to time of first in linked trip set
 for field in ['time_start_mam', 'time_start_hhmm', 'o_purpose', 'place_start', 'ocity', 'ocnty', 'ozip', 'address_start', 'olat', 'olng']:
     # Save the original data in a new column
-    primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
+    #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
     primary_trips_df.loc[:,field] = df.groupby('linked_flag').apply(lambda x: x[field].iloc[0])
 
 # Change primary trip start time to time of last in linked trip set
 # Change primary purpose and activity duration to that of the last trip in the set
 for field in ['time_end_hhmm', 'time_end_hhmm', 'a_dur', 'd_purpose', 'place_end', 'dcity', 'dcnty', 'dzip', 'address_end', 'dlat', 'dlng']:
     # Save the original data in a new column
-    primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
+    #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
     primary_trips_df.loc[:,field] = df.groupby('linked_flag').apply(lambda x: x[field].iloc[-1])
     
 for field in sum_fields:
     # Save original primary trip info in a new column appened with "_original"
-    primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
+    #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
     # Replace the primary trip fields with summed data
     primary_trips_df.loc[:,field] = sums[field]
 
+for field in max_fields:
+    # Save original primary trip info in a new column appened with "_original"
+    #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
+    # Replace the primary trip fields with summed data
+    primary_trips_df.loc[:,field] = maxes[field]
+
+#df_min_stop_time = df_stop_times.sort('stop_sequence', ascending=True).groupby('trip_id', as_index=False).first()
+##need min stop time
+#df_trips = pd.merge(left = df_trips, right = df_min_stop_time, on=['trip_id'])
 
 ## Save transitline data into primary trip record
 #tr1 = pd.DataFrame(df.groupby('linked_flag')[['transitline1']].agg(lambda x: x.tolist()))
@@ -190,8 +224,8 @@ num_transys = 4
 
 for row in xrange(0, len(combined_transitlines)):
     # Add all unlinked trips' transitline data into a list
-    combined_transitlines[0].iloc[row] = list(set(combined_transitlines[0].iloc[row]))  #[0] selects df column
-    combined_transitsys[0].iloc[row] = list(set(combined_transitsys[0].iloc[row]))  #[0] selects df column
+    combined_transitlines[0].iloc[row] = unique_ordered_list(combined_transitlines[0].iloc[row])  #[0] selects df column
+    combined_transitsys[0].iloc[row] = unique_ordered_list(combined_transitsys[0].iloc[row])  #[0] selects df column
     # Remove zeros that might be at beginning of the list
     combined_transitlines[0].iloc[row] = [x for x in combined_transitlines[0].iloc[row] if x != 0]
     combined_transitsys[0].iloc[row] = [x for x in combined_transitsys[0].iloc[row] if x != 0]
@@ -212,44 +246,59 @@ for i in xrange(1,5):
     primary_trips_df['transitline' + str(i)] = combined_transitlines['tr' + str(i)]
     primary_trips_df['transitsystem' + str(i)] = combined_transitsys['ts' + str(i)]
 
-# Do the same for transitsystem
-
-#a = nonzero(tr1.loc['1054601'][0] + tr2.loc['1054601'][0] + tr3.loc['1054601'][0] + tr4.loc['1054601'][0]))
-
-#for row in xrange(len(tr1)):
-#    a = tr1.iloc[row][0]
-#    b = tr2.iloc[row][0]
-#    c = tr3.iloc[row][0]
-#    d = tr4.iloc[row][0]
-#    print a
-#    # add in the newlist to a column for each linked trip
-#    newlist = []
-#    for each in [a, b, c, d]:
-#        for col in each:
-#            if col > 0:
-#                newlist.append(col)
-#    primary_trips_df['transitline1' + '_list'].iloc[row] = newlist
-
-# Add trips from transit
 
 # Trips with all unlinked trips removed
 # note the "-trip" call to grab inverse of selection, so we're getting all survey trips NOT in unlinked_trips_df
 trip_unlinked_removed_all = trip[-trip['tripID'].isin(unlinked_trips_df.tripID)]   # ALL unlinked trips removed
+
+
+# Okay now we want to filter out some bad linked trips and just import the unlinked trip
+# Do this before we add the linked trips onto the main file
+home2home = primary_trips_df.query("place_end == 'HOME' and place_start == 'HOME'")
+
+# List of bad links is the manually ID'ed linked_flag value of trips that look incorrect.
+# Remove these from the auto-linked trip and keep in the unlinked trip file\
+#bad_links = pd.read_csv(bad_trips)
+with open(bad_trips, 'r') as f:
+    bad_trip_list = []
+    for item in f:
+        bad_trip_list.append(item[:-1])
+
+bad_trip_df = primary_trips_df[primary_trips_df['linked_flag'].isin(bad_trip_list)]
+# Append the home2home trips on the bad_trip_df
+bad_trip_df = bad_trip_df.append(home2home)
+
+# Remove bad trips from combined trip file
+primary_trips_df = primary_trips_df[-primary_trips_df['tripID'].isin(bad_trip_df.tripID)]
+
+# Add unlinked trips back in to unlinked file
+#unlinked_trips_df = unlinked_trips_df.append(unlinked_trips_df[unlinked_trips_df['linked_flag'].isin(bad_trip_df.linked_flag)])     
 
 # Trips with all linked trips added (and unlinked trips removed)
 trip_with_linked = pd.concat([trip_unlinked_removed_all,primary_trips_df])
 
 # List of still unlinked trips - these still need to be addressed
 unprocessed_unlinked_trips = unlinked_trips_df[unlinked_trips_df['combined_modes'].str.count('-') >= trip_set_max]
+unprocessed_unlinked_trips = unprocessed_unlinked_trips.append(unlinked_trips_df[unlinked_trips_df['linked_flag'].isin(bad_trip_df.linked_flag)])    
 
 # Distribution of combined trip modes
 a = primary_trips_df.groupby('combined_modes').count()['recordID']
 
+# Add the count of unlinked trips in each linked trip 
+trip_with_linked['num_trips_linked'] = df_setsize[1]
+#trip_with_linked['num_trips_linked'].fillna(0)
+
+# Reorder columns to match original trip file
+#trip_with_linked.columns(trip_unlinked_removed_all.columns)
+
+
+
+
 # Send to excel
 writer = pd.ExcelWriter('trip_linking.xlsx')
 
-# Trip file with ALL unlinked files removed and new linked trips added
-trip_with_linked.to_excel(writer, "Linked Trips Combined")
+# Trip file with ALL unlinked files removed and new linked trips added (reording cols to match original trip file order)
+trip_with_linked.to_excel(writer, "Linked Trips Combined", cols=list(trip_unlinked_removed_all.columns) + ['combined_modes', 'num_trips_linked'])
 
 # Trips with ALL unlinked trips removed
 trip_unlinked_removed_all.to_excel(writer, 'All Unlinked Trips Removed')
@@ -266,3 +315,6 @@ unprocessed_unlinked_trips.to_excel(writer, "Unprocessed Unlinked Trips")
 
 # Unlinked trips that need to be edited by hand
 writer.close()
+
+
+# Test some stuff
