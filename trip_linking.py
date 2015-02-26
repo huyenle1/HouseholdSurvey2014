@@ -6,6 +6,8 @@ import process_survey as ps
 # Load the survey data per HHSurveyToPandas.py
 trip = survey_df.load_survey_sheet(survey_df.trip_file, survey_df.trip_sheetname)
 
+
+trip.replace('.',0,inplace=True)
 # List of unique personIDs
 uniquePersonIDs = trip.groupby('personID').count().index
 
@@ -270,6 +272,7 @@ bad_trip_df = bad_trip_df.append(home2home)
 
 # Remove bad trips from combined trip file
 primary_trips_df = primary_trips_df[-primary_trips_df['tripID'].isin(bad_trip_df.tripID)]
+primary_trips_df['linked_flag'] = primary_trips_df.index
 
 # Add unlinked trips back in to unlinked file
 #unlinked_trips_df = unlinked_trips_df.append(unlinked_trips_df[unlinked_trips_df['linked_flag'].isin(bad_trip_df.linked_flag)])     
@@ -295,7 +298,7 @@ trip_with_linked['num_trips_linked'] = df_setsize[1]
 
 
 # Send to excel
-writer = pd.ExcelWriter('trip_linking.xlsx')
+writer = pd.ExcelWriter('trip_linking_NEW.xlsx')
 
 # Trip file with ALL unlinked files removed and new linked trips added (reording cols to match original trip file order)
 trip_with_linked.to_excel(writer, "Linked Trips Combined", cols=list(trip_unlinked_removed_all.columns) + ['combined_modes', 'num_trips_linked'])

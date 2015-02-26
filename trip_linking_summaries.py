@@ -8,27 +8,30 @@ from scipy import stats
 
 # Load the person file
 hh_loc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Household\1_PSRC2014_HH_2014-08-07_v3.xlsx'
-trip_loc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Trip\4_PSRC2014_Trip_2014-08-07_v2-5.xlsx'
+trip_loc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Trip\4_PSRC2014_Trip_2014-08-07_v2-7.xlsx'
+linked_file = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Linked Trip Edits\V7\Trips Linked v7 with BN Changes.xlsx'
 
 hh = pd.read_excel(hh_loc)
 trip = pd.read_excel(trip_loc, 'Data')
 
+trip.replace('.',"",inplace=True)
+
 # Trip file with unlinked files removed and converted to linked trips
-linked_trips_combined = pd.read_excel("trip_linking.xlsx", sheetname='Linked Trips Combined')
+linked_trips_combined = pd.read_excel(linked_file, sheetname='Linked Trips Combined')
 linked_trips_combined = pd.merge(linked_trips_combined,
                                 pd.DataFrame(hh[['hhid', 'expwt_final']]),
                                 left_on='hhid',right_on='hhid',
                                 how="left", suffixes =['_trip','_per'])
 
 # Trips without unlinked or linked trips
-linked_trips_removed = pd.read_excel("trip_linking.xlsx", sheetname='All Unlinked Trips Removed')
+linked_trips_removed = pd.read_excel(linked_file, sheetname='All Unlinked Trips Removed')
 linked_trips_removed = pd.merge(linked_trips_removed,
                                 pd.DataFrame(hh[['hhid', 'expwt_final']]),
                                 left_on='hhid',right_on='hhid',
                                 how="left", suffixes =['_trip','_per'])
 
 # Linked Trips only
-linked_trips_only = pd.read_excel("trip_linking.xlsx", sheetname='Linked Trips Only')
+linked_trips_only = pd.read_excel(linked_file, sheetname='Linked Trips Only')
 linked_trips_only = pd.merge(linked_trips_only,
                                 pd.DataFrame(hh[['hhid', 'expwt_final']]),
                                 left_on='hhid',right_on='hhid',
@@ -40,7 +43,7 @@ original_trip = pd.merge(trip, pd.DataFrame(hh[['hhid', 'expwt_final']]),
                                 how="left", suffixes =['_trip','_per'])
 
 # Unlinked Trips only
-unlinked_trips_only = pd.read_excel("trip_linking.xlsx", sheetname='Unlinked Trips Only')
+unlinked_trips_only = pd.read_excel(linked_file, sheetname='Unlinked Trips Only')
 
 unlinked_trips_only = pd.merge(unlinked_trips_only,
                                 pd.DataFrame(hh[['hhid', 'expwt_final']]),
@@ -69,44 +72,43 @@ for column in original_trip.columns:
         print column
         original_trip = original_trip[original_trip[column] <> '.']
 
+original_trip.fillna(0, inplace=True)
+original_trip.replace('', 0, inplace=True)
 original_trip = original_trip[original_trip.gdist > 0.05]
 original_trip = original_trip[original_trip.gdist < 200]
 
-sum_fields = ['gdist', 'gtime', 'trip_dur_reported']
+#original_trip['gdist'] = original_trip[field].astype("int64")
+original_trip['gtime'] = original_trip['gtime'].astype("float64")
 
-# Convert to consistent type - float 64
-for field in sum_fields:
-    original_trip[field] = original_trip[field].astype("float64")
-
-def summaries(df):
+def summaries(df, expwt):
     results = {}
     results['gdist'] = df['gdist'].mean()
     results['gtime'] = df['gtime'].mean()
-    results['mode'] = df.groupby('mode').sum()['expwt_final']
-    results['purpose'] = df.groupby('d_purpose').sum()['expwt_final']
-    results['purp_x_mode'] = pd.pivot_table(df, values='expwt_final', rows='mode', 
+    results['mode'] = df.groupby('mode').sum()[expwt]
+    results['purpose'] = df.groupby('d_purpose').sum()[expwt]
+    results['purp_x_mode'] = pd.pivot_table(df, values=expwt, rows='mode', 
                                     columns='d_purpose', aggfunc=np.sum)
     return results
 
-def weighted_summaries(df):
+def weighted_summaries(df, expwt):
     results = {}
     #a = ((df['gidst']*df['expwt_final'])/df['expwt_final'].count()).mean()
-    results['gdist'] = ((df['gdist']*df['expwt_final'])/(df['expwt_final'].count())).mean()
-    results['gtime'] = ((df['gtime']*df['expwt_final'])/df['expwt_final'].count()).mean()
+    results['gdist'] = ((df['gdist']*df[expwt])/(df[expwt].count())).mean()
+    results['gtime'] = ((df['gtime']*df[expwt])/df[expwt].count()).mean()
     #results['mode']
 
     return results
 
 # summaries
-linked_trips_combined_sum = summaries(linked_trips_combined)
-linked_trips_removed_sum = summaries(linked_trips_removed)
+linked_trips_combined_sum = summaries(linked_trips_combined, 'expwt_final_per')
+linked_trips_removed_sum = summaries(linked_trips_removed, 'expwt_final_per')
 #linked_trips_only_sum = summaries(linked_trips_only)
-original_trip_sum = summaries(original_trip)
+original_trip_sum = summaries(original_trip, 'expwt_final')
 
 # weighted summaries
-linked_trips_combined_wsum = weighted_summaries(linked_trips_combined)
-linked_trips_removed_wsum = weighted_summaries(linked_trips_removed)
-original_trip_wsum = weighted_summaries(original_trip)
+linked_trips_combined_wsum = weighted_summaries(linked_trips_combined, 'expwt_final_per')
+linked_trips_removed_wsum = weighted_summaries(linked_trips_removed, 'expwt_final_per')
+original_trip_wsum = weighted_summaries(original_trip, 'expwt_final')
 
 
 mode = original_trip_sum['mode']
@@ -152,16 +154,16 @@ def wt_avg(df, col):
 
 # Number of walk trips by purpose
 walk_trips_original.groupby('d_purpose').sum()['expwt_final']
-walk_trips_no_unlinked.groupby('d_purpose').sum()['expwt_final']
-walk_trips_combined.groupby('d_purpose').sum()['expwt_final']
+walk_trips_no_unlinked.groupby('d_purpose').sum()['expwt_final_per']
+walk_trips_combined.groupby('d_purpose').sum()['expwt_final_per']
 
 # Avg trip distance by purpose
 def avg_dist_x_purp(df):
     avg_dist_x_purp = {} ; newlist = []
     for i in xrange(1, 16 + 1):
-        if i != 10: # skip exercise trips...
-            avg_dist_x_purp[i] = df[df['d_purpose'] == i]['gdist'].mean()
-            newlist.append(df[df['d_purpose'] == i]['gdist'].mean())
+        #if i != 10: # skip exercise trips...
+        avg_dist_x_purp[i] = df[df['d_purpose'] == i]['gdist'].mean()
+        newlist.append(df[df['d_purpose'] == i]['gdist'].mean())
     return pd.DataFrame(newlist)
 
 avg_dist_x_purp_original = avg_dist_x_purp(walk_trips_original)
@@ -202,8 +204,8 @@ trans_trips_combined = trans_trips_combined[trans_trips_combined['mode'] < 12]
 
 
 trans_trips_original.groupby('d_purpose').sum()['expwt_final']
-trans_unlinked_removed.groupby('d_purpose').sum()['expwt_final']
-trans_trips_combined.groupby('d_purpose').sum()['expwt_final']
+trans_unlinked_removed.groupby('d_purpose').sum()['expwt_final_per']
+trans_trips_combined.groupby('d_purpose').sum()['expwt_final_per']
 
 ################### Auto Trips by purpose
 
@@ -214,8 +216,8 @@ auto_unlinked_removed = linked_trips_removed[linked_trips_removed['mode'] < 5]
 auto_trips_combined = linked_trips_combined[linked_trips_combined['mode'] < 5]
 
 auto_trips_original.groupby('d_purpose').sum()['expwt_final']
-auto_unlinked_removed.groupby('d_purpose').sum()['expwt_final']
-auto_trips_combined.groupby('d_purpose').sum()['expwt_final']
+auto_unlinked_removed.groupby('d_purpose').sum()['expwt_final_per']
+auto_trips_combined.groupby('d_purpose').sum()['expwt_final_per']
 
 ######### Commute trips #####
 # Only want origin of home, d of work
@@ -224,15 +226,15 @@ commute_linked_trips_combined = linked_trips_combined.query("o_purpose == 1 & d_
 commute_original_trip = original_trip.query("o_purpose == 1 & d_purpose == 2 or o_purpose == 2 & d_purpose == 1")
 
 # summaries of commute trips
-commute_linked_trips_combined_sum = summaries(commute_linked_trips_combined)
-commute_linked_trips_removed_sum = summaries(commute_linked_trips_removed)
+commute_linked_trips_combined_sum = summaries(commute_linked_trips_combined,'expwt_final_per')
+commute_linked_trips_removed_sum = summaries(commute_linked_trips_removed, 'expwt_final_per')
 #linked_trips_only_sum = summaries(linked_trips_only)
-commute_original_trip_sum = summaries(commute_original_trip)
+commute_original_trip_sum = summaries(commute_original_trip, 'expwt_final')
 
 # weighted summaries
-commute_linked_trips_combined_wsum = weighted_summaries(commute_linked_trips_combined)
-commute_linked_trips_removed_wsum = weighted_summaries(commute_linked_trips_removed)
-commute_original_trip_wsum = weighted_summaries(commute_original_trip)
+commute_linked_trips_combined_wsum = weighted_summaries(commute_linked_trips_combined,'expwt_final_per')
+commute_linked_trips_removed_wsum = weighted_summaries(commute_linked_trips_removed,'expwt_final_per')
+commute_original_trip_wsum = weighted_summaries(commute_original_trip,'expwt_final')
 
 # Print out to excel
 #output_sheet = "Linked Trip Summaries.xlsx"
@@ -240,3 +242,5 @@ commute_original_trip_wsum = weighted_summaries(commute_original_trip)
 #worksheet = workbook.add_worksheet()
 
 #worksheet.write("")
+
+# Active transportation summaries

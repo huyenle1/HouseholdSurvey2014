@@ -8,7 +8,7 @@ import HHSurveyToPandas as survey_df    # Load survey data
 import process_survey as ps
 
 # Load the previously linked trip data
-file_loc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Linked Trip Edits\Trip File with Linked Records (Extra Data Included) 2-23-15.xlsx'
+file_loc = r'J:\Projects\Surveys\HHTravel\Survey2014\Data\Linked Trip Edits\V7\Trips Linked v7 1-24-15.xlsx'
 base_trips = pd.read_excel(file_loc, "Linked Trips Combined")
 unprocessed_unlinked = pd.read_excel(file_loc, "Unprocessed Unlinked Trips")
 #link_list_loc = 'link_list.txt'
@@ -21,12 +21,15 @@ link_list_df = pd.read_csv(link_list_csv)
 ## Update the linked_flag values on the base_trips and unprocessed_unlinked files with those from the link_list
 ## This is necessary because the link_list includes new trips we've added manually to a set
 #base_trip
-link_list_df['linked_flag'] = link_list_df['linked_flag'].astype("int64")
-base_trips['new_linked_flag'] = link_list_df['linked_flag']
-unprocessed_unlinked['new_linked_flag'] = link_list_df['linked_flag']
+# Join link li
 
-base_trips.fillna(0, inplace=True)
-unprocessed_unlinked.fillna(0, inplace=True)
+#link_list_df['linked_flag'] = link_list_df['linked_flag'].astype("int64")
+#base_trips['new_linked_flag'] = link_list_df['linked_flag']
+#unprocessed_unlinked['new_linked_flag'] = link_list_df['linked_flag']
+
+
+#base_trips.fillna(0, inplace=True)
+#unprocessed_unlinked.fillna(0, inplace=True)
 
 def unique_ordered_list(seq):
     seen = set()
@@ -53,9 +56,16 @@ unprocessed_trips_pulled = unprocessed_unlinked[unprocessed_unlinked['tripID'].i
 # Combine all the unlinked trips together in a single dataframe for processing
 unlinked_trips = base_trips_pulled.append(unprocessed_trips_pulled)
 unlinked_trips.fillna(0,inplace=True)
+#unlinked_trips.columns = list(base_trips_pulled)
+
+# Join with link_list_df to import new linked_flag id
+unlinked_trips = pd.merge(unlinked_trips,link_list_df,on="tripID",sort=True,suffixes=['','_new'])
+
 
 # Update linked_flag ID to fill 0 values on new_linked_flag with old linked_flag values
-unlinked_trips[unlinked_trips['new_linked_flag'] == 0]['new_linked_flag'] = unlinked_trips['linked_flag']
+#unlinked_trips['new_linked_flag'].replace(0,unlinked_trips['linked_flag'],inplace=True)
+
+#unlinked_trips[unlinked_trips['new_linked_flag'] == 0]['new_linked_flag'] = unlinked_trips['linked_flag']
 
 # Update linked_flag ID to fill NaN values on new_linked_flag with old linked_flag values
 #unlinked_trips['linked_flag'] = unlinked_trips['linked_flag'].astype("int64")
@@ -86,8 +96,8 @@ for field in ['transitline' + str(x) for x in xrange(1,5)]:
     unlinked_trips[field] = unlinked_trips[field].astype("int")
 
 # Get the sums and max values of trips grouped by each person's set
-sums = unlinked_trips.groupby('new_linked_flag').sum()
-maxes = unlinked_trips.groupby('new_linked_flag').max()
+sums = unlinked_trips.groupby('linked_flag_new').sum()
+maxes = unlinked_trips.groupby('linked_flag_new').max()
 
 # Now we want to squish those unlinked trips together!
 # The "primary trip" will inherit characeristics of associated trips
@@ -98,25 +108,25 @@ maxes = unlinked_trips.groupby('new_linked_flag').max()
 df = pd.DataFrame(unlinked_trips)
 df.index = unlinked_trips['tripID']
 # Find the trip ID of the longest trip in each set
-primary_trips = pd.DataFrame(df.groupby('new_linked_flag')['gdist'].agg(lambda x: x.idxmax()))
-#unlinked_trips_max4.groupby('linked_flag')
+primary_trips = pd.DataFrame(df.groupby('linked_flag_new')['gdist'].agg(lambda x: x.idxmax()))
+#unlinked_trips_max4.groupby('linked_flag_new')
 
 # Select only the primary trip from each set
 primary_trips_df = unlinked_trips[df['tripID'].isin(primary_trips['gdist'])]
-primary_trips_df.index = primary_trips_df.new_linked_flag   # Reset index to trip set ID
+primary_trips_df.index = primary_trips_df.linked_flag_new   # Reset index to trip set ID
 
 # Change primary trip start time to time of first in linked trip set
 for field in ['time_start_mam', 'time_start_hhmm', 'o_purpose', 'place_start', 'ocity', 'ocnty', 'ozip', 'address_start', 'olat', 'olng']:
     # Save the original data in a new column
     #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
-    primary_trips_df.loc[:,field] = df.groupby('new_linked_flag').apply(lambda x: x[field].iloc[0])
+    primary_trips_df.loc[:,field] = df.groupby('linked_flag_new').apply(lambda x: x[field].iloc[0])
 
 # Change primary trip start time to time of last in linked trip set
 # Change primary purpose and activity duration to that of the last trip in the set
 for field in ['time_end_hhmm', 'time_end_hhmm', 'a_dur', 'd_purpose', 'place_end', 'dcity', 'dcnty', 'dzip', 'address_end', 'dlat', 'dlng']:
     # Save the original data in a new column
     #primary_trips_df.loc[:,field + '_original'] = primary_trips_df[field]
-    primary_trips_df.loc[:,field] = df.groupby('new_linked_flag').apply(lambda x: x[field].iloc[-1])
+    primary_trips_df.loc[:,field] = df.groupby('linked_flag_new').apply(lambda x: x[field].iloc[-1])
     
 for field in sum_fields:
     # Save original primary trip info in a new column appened with "_original"
@@ -131,14 +141,14 @@ for field in max_fields:
     primary_trips_df.loc[:,field] = maxes[field]
 
 # Collect all transitline1 values for a set in a single array
-tr1 = pd.DataFrame(df.groupby('new_linked_flag')[['transitline1']].agg(lambda x: x.tolist()))
-tr2 = pd.DataFrame(df.groupby('new_linked_flag')[['transitline2']].agg(lambda x: x.tolist()))
-tr3 = pd.DataFrame(df.groupby('new_linked_flag')[['transitline3']].agg(lambda x: x.tolist()))
-tr4 = pd.DataFrame(df.groupby('new_linked_flag')[['transitline4']].agg(lambda x: x.tolist()))
-ts1 = pd.DataFrame(df.groupby('new_linked_flag')[['transitsystem1']].agg(lambda x: x.tolist()))
-ts2 = pd.DataFrame(df.groupby('new_linked_flag')[['transitsystem2']].agg(lambda x: x.tolist()))
-ts3 = pd.DataFrame(df.groupby('new_linked_flag')[['transitsystem3']].agg(lambda x: x.tolist()))
-ts4 = pd.DataFrame(df.groupby('new_linked_flag')[['transitsystem4']].agg(lambda x: x.tolist()))
+tr1 = pd.DataFrame(df.groupby('linked_flag_new')[['transitline1']].agg(lambda x: x.tolist()))
+tr2 = pd.DataFrame(df.groupby('linked_flag_new')[['transitline2']].agg(lambda x: x.tolist()))
+tr3 = pd.DataFrame(df.groupby('linked_flag_new')[['transitline3']].agg(lambda x: x.tolist()))
+tr4 = pd.DataFrame(df.groupby('linked_flag_new')[['transitline4']].agg(lambda x: x.tolist()))
+ts1 = pd.DataFrame(df.groupby('linked_flag_new')[['transitsystem1']].agg(lambda x: x.tolist()))
+ts2 = pd.DataFrame(df.groupby('linked_flag_new')[['transitsystem2']].agg(lambda x: x.tolist()))
+ts3 = pd.DataFrame(df.groupby('linked_flag_new')[['transitsystem3']].agg(lambda x: x.tolist()))
+ts4 = pd.DataFrame(df.groupby('linked_flag_new')[['transitsystem4']].agg(lambda x: x.tolist()))
 
 # Add together all the transitline values (1 through 4)
 combined_transitlines = pd.DataFrame(tr1['transitline1'] + tr2['transitline2'] + tr3['transitline3'] + tr4['transitline4'])
