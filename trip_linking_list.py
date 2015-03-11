@@ -1,6 +1,6 @@
 ﻿# This file is a hack version of trip_linking.py to create linked trips from a list of manually-identified sets.
 # It reads in a list of trips that should be linked and creates a spreadsheet of these linked trips. 
-# Save a text file of trip IDs in link_list.txt and run the script.
+# Save a text file of trip IDs and trip set IDs in link_list.txt and run the script.
 
 import pandas as pd
 import numpy as np

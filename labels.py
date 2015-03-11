@@ -1,9 +1,11 @@
+# Replace field values with label strings (e.g., mode value of 7 replaced with "bus"
+# Adds labels to all 2014 Survey fields and saves results in a local Excel workbook in the "labeled" directory
+
 import json
 import pandas as pd
 import numpy as np
-#import household, person, vehicle, trip
 import config
-import process_survey as ps
+import utils.process_survey as ps
 import os
 
 # Load latest data
